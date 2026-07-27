@@ -1,0 +1,147 @@
+### BooKinG API - Tests avec REST Client (extension VS Code gratuite)
+### Installe l'extension "REST Client" (humao.rest-client) si pas déjà fait.
+### Clique sur "Send Request" juste au-dessus de chaque ### pour l'exécuter.
+
+@host = http://localhost:3000
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJ0ZXN0QHRlc3QuY29tIiwiaWF0IjoxNzg1MDgwMDE5LCJleHAiOjE3ODU2ODQ4MTl9.7EnYt8ZonlLxgtI9xsYChq7hFGIbJfG46widy3Zv4BM
+
+
+### 1. Auth - Register
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{
+  "nom": "Test",
+  "prenom": "User",
+  "email": "test@test.com",
+  "password": "test1234"
+}
+
+
+### 1. Auth - Login
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@test.com",
+  "password": "test1234"
+}
+
+
+### 2. Books - Liste
+GET {{host}}/api/books
+
+
+### 2. Books - Categories
+GET {{host}}/api/books/categories
+
+
+### 2. Books - Detail (id=1)
+GET {{host}}/api/books/1
+
+
+### 2. Books - Creer (auth requise)
+POST {{host}}/api/books
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "titre": "Candide",
+  "auteur": "Voltaire",
+  "annee": 1759,
+  "description": "Un conte satirique.",
+  "nb_pages": 150,
+  "categorie_id": 2
+}
+
+
+### 3. Chapitres - Liste (livre 1)
+GET {{host}}/api/books/1/chapitres
+
+
+### 3. Chapitres - Lire chapitre 1 (gratuit)
+GET {{host}}/api/chapitres/1/lire
+Authorization: Bearer {{token}}
+
+
+### 3. Chapitres - Lire chapitre 3 (payant)
+GET {{host}}/api/chapitres/3/lire
+Authorization: Bearer {{token}}
+
+
+### 4. Emprunts - Emprunter le livre 1
+POST {{host}}/api/emprunts
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "book_id": 1
+}
+
+
+### 4. Emprunts - Mes emprunts en cours
+GET {{host}}/api/emprunts
+Authorization: Bearer {{token}}
+
+
+### 4. Emprunts - Historique
+GET {{host}}/api/emprunts/historique
+Authorization: Bearer {{token}}
+
+
+### 4. Emprunts - Terminer un emprunt (id=1)
+PUT {{host}}/api/emprunts/1/terminer
+Authorization: Bearer {{token}}
+
+
+### 5. Achats - Simuler un paiement
+POST {{host}}/api/achats/simuler
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "book_id": 1,
+  "montant": 500
+}
+
+
+### 5. Achats - Mes achats
+GET {{host}}/api/achats
+Authorization: Bearer {{token}}
+
+
+### 6. Favoris - Liste
+GET {{host}}/api/favoris
+Authorization: Bearer {{token}}
+
+
+### 6. Favoris - Ajouter livre 1
+POST {{host}}/api/favoris
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "book_id": 1
+}
+
+
+### 6. Favoris - Retirer livre 1
+DELETE {{host}}/api/favoris/1
+Authorization: Bearer {{token}}
+
+
+### 7. Profil - Mon profil
+GET {{host}}/api/users/me
+Authorization: Bearer {{token}}
+
+
+### 7. Profil - Modifier mon profil
+PUT {{host}}/api/users/me
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "nom": "Diallo",
+  "prenom": "Test",
+  "avatar": null
+}
