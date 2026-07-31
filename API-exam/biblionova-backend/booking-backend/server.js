@@ -20,7 +20,7 @@ app.use(express.json());
 
 // Petite route de test pour vérifier que le serveur tourne
 app.get('/', (req, res) => {
-  res.json({ message: 'API BooKinG opérationnelle 🚀' });
+  res.json({ message: 'API BiblioNova opérationnelle 🚀' });
 });
 
 app.use('/api/auth', authRoutes);
