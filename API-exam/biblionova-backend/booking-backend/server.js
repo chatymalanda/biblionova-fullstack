@@ -12,7 +12,10 @@ const favoriRoutes = require('./routes/favoriRoutes');
 
 const app = express();
 
-app.use(cors());
+// CORS_ORIGIN peut être défini en prod (ex: https://biblionova-fullstack.vercel.app).
+// Sans variable définie, on autorise toutes les origines (pratique en dev/démo).
+const corsOrigin = process.env.CORS_ORIGIN;
+app.use(cors(corsOrigin ? { origin: corsOrigin } : {}));
 app.use(express.json());
 
 // Petite route de test pour vérifier que le serveur tourne

@@ -72,22 +72,27 @@ export default function AuthPage({ defaultMode = 'login' }: Props) {
     e.preventDefault();
     setError('');
     setLoading(true);
-    await new Promise(r => setTimeout(r, 700));
 
     if (mode === 'login') {
       if (!email || !password) { setError('Veuillez remplir tous les champs.'); setLoading(false); return; }
-      const ok = login(email, password);
-      if (ok) navigate('/dashboard');
-      else { setError('Identifiants incorrects.'); setLoading(false); }
+      const result = await login(email, password);
+      if (result.ok) navigate('/dashboard');
+      else { setError(result.error || 'Identifiants incorrects.'); setLoading(false); }
     } else if (mode === 'register') {
       if (!name || !email || !password || !confirm) { setError('Veuillez remplir tous les champs.'); setLoading(false); return; }
       if (password !== confirm) { setError('Les mots de passe ne correspondent pas.'); setLoading(false); return; }
       if (password.length < 6) { setError('Minimum 6 caractères.'); setLoading(false); return; }
-      const ok = register(name, email, password);
-      if (ok) navigate('/dashboard');
-      else { setError('Une erreur est survenue.'); setLoading(false); }
+
+      // Le backend attend "nom" et "prenom" séparément : on découpe le nom complet.
+      const [prenom, ...rest] = name.trim().split(' ');
+      const nom = rest.length > 0 ? rest.join(' ') : prenom;
+
+      const result = await register(nom, prenom, email, password);
+      if (result.ok) navigate('/dashboard');
+      else { setError(result.error || 'Une erreur est survenue.'); setLoading(false); }
     } else {
       if (!email) { setError('Veuillez entrer votre adresse e-mail.'); setLoading(false); return; }
+      // Pas de route "mot de passe oublié" côté backend pour l'instant.
       setResetSent(true);
       setLoading(false);
     }
@@ -283,9 +288,6 @@ export default function AuthPage({ defaultMode = 'login' }: Props) {
         </div>
       </div>
 
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
-        <p className="text-white/30 text-[11px] text-center">Démo : entrez n'importe quels identifiants valides</p>
-      </div>
     </div>
   );
 }

@@ -1,14 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, Search, Clock, Shield, Star, ArrowRight, Menu, X, ChevronRight, Library } from 'lucide-react';
-import { mockBooks } from '../data/mockData';
+import { Book } from '../types';
+import { api } from '../services/api';
+import { adaptBook, BackendBook } from '../services/adapters';
 
 export default function LandingPage() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchQ, setSearchQ] = useState('');
+  const [books, setBooks] = useState<Book[]>([]);
 
-  const filtered = mockBooks.filter(b =>
+  // Le catalogue est une route publique (GET /api/books) : pas besoin d'être connecté.
+  useEffect(() => {
+    api
+      .get<BackendBook[]>('/books', false)
+      .then((data) => setBooks(data.map(adaptBook)))
+      .catch(() => setBooks([]));
+  }, []);
+
+  const filtered = books.filter(b =>
     b.title.toLowerCase().includes(searchQ.toLowerCase()) ||
     b.author.toLowerCase().includes(searchQ.toLowerCase())
   );
@@ -139,7 +150,7 @@ export default function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {(searchQ ? filtered : mockBooks).map((book, i) => (
+            {(searchQ ? filtered : books).map((book, i) => (
               <div
                 key={book.id}
                 className="group bg-cream rounded border border-ink-100 overflow-hidden hover:shadow-lg hover:shadow-ink-200/50 transition-all duration-300"

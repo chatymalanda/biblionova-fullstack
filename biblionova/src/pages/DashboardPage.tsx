@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { mockLoans, mockBooks } from '../data/mockData';
+import { Book, Loan } from '../types';
+import { api, ApiError } from '../services/api';
+import { adaptBook, adaptEmprunt, BackendBook, BackendEmprunt } from '../services/adapters';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend
@@ -64,15 +66,48 @@ export default function DashboardPage() {
   const [tab, setTab] = useState<Tab>('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const active = mockLoans.filter(l => l.status === 'active');
-  const overdue = mockLoans.filter(l => l.status === 'overdue');
-  const returned = mockLoans.filter(l => l.status === 'returned');
+  const [books, setBooks] = useState<Book[]>([]);
+  const [loans, setLoans] = useState<Loan[]>([]);
+  const [borrowMsg, setBorrowMsg] = useState('');
+
+  const loadData = () => {
+    api.get<BackendBook[]>('/books').then((data) => setBooks(data.map(adaptBook))).catch(() => {});
+
+    Promise.all([
+      api.get<BackendEmprunt[]>('/emprunts'),
+      api.get<BackendEmprunt[]>('/emprunts/historique'),
+    ])
+      .then(([enCours, historique]) => {
+        setLoans([...enCours, ...historique].map(adaptEmprunt));
+      })
+      .catch(() => setLoans([]));
+  };
+
+  useEffect(() => {
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleEmprunter = async (bookId: string) => {
+    setBorrowMsg('');
+    try {
+      await api.post('/emprunts', { book_id: Number(bookId) });
+      setBorrowMsg('Livre emprunté avec succès.');
+      loadData();
+    } catch (err) {
+      setBorrowMsg(err instanceof ApiError ? err.message : "Erreur lors de l'emprunt.");
+    }
+  };
+
+  const active = loans.filter(l => l.status === 'active');
+  const overdue = loans.filter(l => l.status === 'overdue');
+  const returned = loans.filter(l => l.status === 'returned');
 
   const statCards = [
     {
       label: 'Total Emprunts',
-      value: '202',
-      sub: '+12% ce mois',
+      value: String(loans.length),
+      sub: 'Vos emprunts',
       up: true,
       icon: BookMarked,
       color: 'text-violet-600',
@@ -419,7 +454,7 @@ export default function DashboardPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                      {mockLoans.map(l => {
+                      {loans.map(l => {
                         const days = daysLeft(l.dueDate);
                         return (
                           <tr key={l.id} className="hover:bg-gray-50/70 transition-colors">
@@ -537,7 +572,7 @@ export default function DashboardPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                      {mockLoans.map(l => (
+                      {loans.map(l => (
                         <tr key={l.id} className="hover:bg-gray-50/60 transition-colors">
                           <td className="px-5 py-4">
                             <div className="flex items-center gap-3">
@@ -575,10 +610,15 @@ export default function DashboardPage() {
             <div className="space-y-4 animate-fade-in">
               <div className="flex items-center justify-between">
                 <h1 className="font-display text-xl font-bold text-gray-800">Catalogue</h1>
-                <span className="text-xs text-gray-400">{mockBooks.length} livres</span>
+                <span className="text-xs text-gray-400">{books.length} livres</span>
               </div>
+              {borrowMsg && (
+                <div className="p-3 bg-ink-50 border border-ink-200 rounded-xl text-xs text-ink-700">
+                  {borrowMsg}
+                </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {mockBooks.map(book => (
+                {books.map(book => (
                   <div key={book.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow group">
                     <div className="relative h-40 overflow-hidden bg-gray-100">
                       <img src={book.cover} alt={book.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -595,7 +635,10 @@ export default function DashboardPage() {
                       <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
                         <span className="text-[11px] text-gray-300 font-mono">{book.pages} pages</span>
                         {book.available && (
-                          <button className="px-3 py-1.5 bg-ink-700 text-white text-xs font-medium rounded-lg hover:bg-ink-800 transition-colors">
+                          <button
+                            onClick={() => handleEmprunter(book.id)}
+                            className="px-3 py-1.5 bg-ink-700 text-white text-xs font-medium rounded-lg hover:bg-ink-800 transition-colors"
+                          >
                             Emprunter
                           </button>
                         )}

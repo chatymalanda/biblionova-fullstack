@@ -6,12 +6,14 @@ import DashboardPage from './pages/DashboardPage';
 import { ReactNode } from 'react';
 
 function PrivateRoute({ children }: { children: ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) return null;
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
 }
 
 function PublicRoute({ children }: { children: ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) return null;
   return !isAuthenticated ? <>{children}</> : <Navigate to="/dashboard" replace />;
 }
 

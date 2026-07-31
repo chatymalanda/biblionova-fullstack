@@ -1,47 +1,92 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { User } from '../types';
+import { api, setToken, clearToken, getToken, ApiError } from '../services/api';
+
+interface BackendUser {
+  id: number;
+  nom: string;
+  prenom: string;
+  email: string;
+  avatar?: string | null;
+}
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => boolean;
-  register: (name: string, email: string, password: string) => boolean;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  register: (nom: string, prenom: string, email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => void;
   isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const MOCK_USER: User = {
-  id: '1',
-  name: 'Amadou Diallo',
-  email: 'amadou@exemple.sn',
-  memberSince: '2025-09-01',
-};
+function toUser(bu: BackendUser): User {
+  return {
+    id: String(bu.id),
+    name: `${bu.prenom} ${bu.nom}`,
+    email: bu.email,
+    avatar: bu.avatar || undefined,
+    memberSince: new Date().toISOString(),
+  };
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const login = (email: string, _password: string): boolean => {
-    // Mock: accept any non-empty credentials
-    if (email && _password) {
-      setUser({ ...MOCK_USER, email });
-      return true;
+  useEffect(() => {
+    const token = getToken();
+    if (!token) {
+      setLoading(false);
+      return;
     }
-    return false;
+    api
+      .get<BackendUser>('/users/me')
+      .then((bu) => setUser(toUser(bu)))
+      .catch(() => clearToken())
+      .finally(() => setLoading(false));
+  }, []);
+
+  const login = async (email: string, password: string) => {
+    try {
+      const data = await api.post<{ token: string; user: BackendUser }>(
+        '/auth/login',
+        { email, password },
+        false
+      );
+      setToken(data.token);
+      setUser(toUser(data.user));
+      return { ok: true };
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Erreur de connexion au serveur.';
+      return { ok: false, error: message };
+    }
   };
 
-  const register = (name: string, email: string, _password: string): boolean => {
-    if (name && email && _password) {
-      setUser({ ...MOCK_USER, name, email });
-      return true;
+  const register = async (nom: string, prenom: string, email: string, password: string) => {
+    try {
+      const data = await api.post<{ token: string; user: BackendUser }>(
+        '/auth/register',
+        { nom, prenom, email, password },
+        false
+      );
+      setToken(data.token);
+      setUser(toUser(data.user));
+      return { ok: true };
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Erreur de connexion au serveur.';
+      return { ok: false, error: message };
     }
-    return false;
   };
 
-  const logout = () => setUser(null);
+  const logout = () => {
+    clearToken();
+    setUser(null);
+  };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );
