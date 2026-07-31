@@ -69,6 +69,7 @@ export default function DashboardPage() {
   const [books, setBooks] = useState<Book[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [borrowMsg, setBorrowMsg] = useState('');
+  const [borrowError, setBorrowError] = useState('');
 
   const loadData = () => {
     api.get<BackendBook[]>('/books').then((data) => setBooks(data.map(adaptBook))).catch(() => {});
@@ -90,18 +91,23 @@ export default function DashboardPage() {
 
   const handleEmprunter = async (bookId: string) => {
     setBorrowMsg('');
+    setBorrowError('');
     try {
       await api.post('/emprunts', { book_id: Number(bookId) });
-      setBorrowMsg('Livre emprunté avec succès.');
+      setBorrowMsg('Livre emprunté avec succès. Retrouvez-le dans l\'onglet "Emprunts".');
       loadData();
     } catch (err) {
-      setBorrowMsg(err instanceof ApiError ? err.message : "Erreur lors de l'emprunt.");
+      setBorrowError(err instanceof ApiError ? err.message : "Erreur lors de l'emprunt.");
     }
   };
 
   const active = loans.filter(l => l.status === 'active');
   const overdue = loans.filter(l => l.status === 'overdue');
   const returned = loans.filter(l => l.status === 'returned');
+
+  // Livres actuellement empruntés (statut actif ou en retard) : utilisé pour
+  // changer l'affichage du bouton "Emprunter" dans le catalogue.
+  const borrowedBookIds = new Set([...active, ...overdue].map(l => l.bookId));
 
   const statCards = [
     {
@@ -613,18 +619,27 @@ export default function DashboardPage() {
                 <span className="text-xs text-gray-400">{books.length} livres</span>
               </div>
               {borrowMsg && (
-                <div className="p-3 bg-ink-50 border border-ink-200 rounded-xl text-xs text-ink-700">
+                <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-700 font-medium">
+                  <CheckCircle size={16} className="flex-shrink-0" />
                   {borrowMsg}
                 </div>
               )}
+              {borrowError && (
+                <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 font-medium">
+                  <AlertTriangle size={16} className="flex-shrink-0" />
+                  {borrowError}
+                </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {books.map(book => (
+                {books.map(book => {
+                  const dejaEmprunte = borrowedBookIds.has(book.id);
+                  return (
                   <div key={book.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow group">
                     <div className="relative h-40 overflow-hidden bg-gray-100">
                       <img src={book.cover} alt={book.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                      <span className={`absolute top-2.5 right-2.5 px-2 py-0.5 text-[11px] font-semibold rounded-full ${book.available ? 'bg-emerald-400 text-white' : 'bg-gray-500 text-white'}`}>
-                        {book.available ? 'Disponible' : 'Emprunté'}
+                      <span className={`absolute top-2.5 right-2.5 px-2 py-0.5 text-[11px] font-semibold rounded-full ${dejaEmprunte ? 'bg-ink-600 text-white' : 'bg-emerald-400 text-white'}`}>
+                        {dejaEmprunte ? 'Déjà emprunté' : 'Disponible'}
                       </span>
                       <span className="absolute bottom-2.5 left-2.5 text-[10px] text-white/70 font-mono">{book.genre}</span>
                     </div>
@@ -634,7 +649,11 @@ export default function DashboardPage() {
                       <p className="text-xs text-gray-500 mt-2 line-clamp-2 leading-relaxed">{book.description}</p>
                       <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
                         <span className="text-[11px] text-gray-300 font-mono">{book.pages} pages</span>
-                        {book.available && (
+                        {dejaEmprunte ? (
+                          <span className="px-3 py-1.5 bg-gray-100 text-gray-400 text-xs font-medium rounded-lg flex items-center gap-1.5">
+                            <CheckCircle size={13} /> Emprunté
+                          </span>
+                        ) : (
                           <button
                             onClick={() => handleEmprunter(book.id)}
                             className="px-3 py-1.5 bg-ink-700 text-white text-xs font-medium rounded-lg hover:bg-ink-800 transition-colors"
@@ -645,7 +664,8 @@ export default function DashboardPage() {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
